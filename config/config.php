@@ -49,7 +49,7 @@ if (!defined('DB_USER')) define('DB_USER', 'root');
 if (!defined('DB_PASS')) define('DB_PASS', '');
 
 // 5. Constantes Système
-define('UPLOAD_DIR', __DIR__ . '/uploads/');
+define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/');
 define('UPLOAD_URL', 'uploads/'); // Chemin relatif pour le navigateur
 define('MAX_FILE_SIZE', 5 * 1024 * 1024); // 5 Mo
 define('ALLOWED_MIME_TYPES', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);

@@ -1,6 +1,7 @@
 // assets/js/admin.js
 let currentType = 'sites';
 let currentItems = [];
+let toolsLoaded = false;
 var quill;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,6 +18,7 @@ function showSection(id) {
     if(id === 'sites') { currentType = 'sites'; loadList('sites'); }
     if(id === 'projects') { currentType = 'projects'; loadList('projects'); }
     if(id === 'users') loadUsers();
+    if(id === 'tools') loadTools();
 }
 
 async function loadDashboard() {
@@ -29,32 +31,84 @@ async function loadDashboard() {
     }
 }
 
+function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (m) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+}
+
+function safeUrlDisplay(url) {
+    const u = String(url ?? '').trim();
+    if(!u) return '';
+    return u.replace(/^https?:\/\//i, '');
+}
+
+function buildAdminItemHTML(item, type) {
+    const name = escapeHtml(item.name);
+    const url = escapeHtml(item.url);
+    const urlDisplay = escapeHtml(safeUrlDisplay(item.url));
+    const img = item.image_path ? `<img src="../${escapeHtml(item.image_path)}" alt="">` : '';
+
+    const meta = (() => {
+        if(type === 'projects') {
+            const badges = [];
+            if(item.status) badges.push(`<span class="admin-badge">${escapeHtml(item.status)}</span>`);
+            if(item.tech_stack) badges.push(`<span class="admin-badge admin-badge-muted">${escapeHtml(item.tech_stack)}</span>`);
+            return badges.length ? `<div class="admin-item-meta">${badges.join('')}</div>` : '';
+        }
+        if(type === 'sites') {
+            const badges = [];
+            if(item.cms) badges.push(`<span class="admin-badge admin-badge-muted">${escapeHtml(item.cms)}</span>`);
+            if(item.version) badges.push(`<span class="admin-badge admin-badge-muted">${escapeHtml(item.version)}</span>`);
+            return badges.length ? `<div class="admin-item-meta">${badges.join('')}</div>` : '';
+        }
+        return '';
+    })();
+
+    return `
+        <div class="admin-item">
+            <div class="admin-item-left">
+                <div class="admin-item-thumb">
+                    ${img || '<span style="opacity:.7">📄</span>'}
+                </div>
+                <div class="admin-item-main">
+                    <div class="admin-item-title">${name}</div>
+                    ${url ? `<a class="admin-item-url" href="${url}" target="_blank" rel="noopener">${urlDisplay || url}</a>` : ''}
+                    ${meta}
+                </div>
+            </div>
+            <div class="admin-item-actions">
+                <button class="icon-btn" type="button" title="Éditer" onclick="editItemById(${item.id})">✏️</button>
+                <button class="icon-btn icon-btn-danger" type="button" title="Supprimer" onclick="deleteItem(${item.id}, '${type}')">🗑️</button>
+            </div>
+        </div>
+    `;
+}
+
 async function loadList(type) {
     const res = await fetch(`api.php?action=list_${type}`);
     const json = await res.json();
     currentItems = json.data;
     const container = document.getElementById(`admin-${type}-list`);
 
-    container.innerHTML = json.data.map(item => `
-        <div class="table-row">
-            <div style="display:flex; align-items:center; gap:1rem;">
-                ${item.image_path ? `<img src="../${item.image_path}" style="width:50px; height:50px; object-fit:cover; border-radius:5px;">` : '📄'}
-                <div><strong>${item.name}</strong><br><small>${item.url}</small></div>
-            </div>
-            <div>
-                <button class="btn-sm" onclick="editItemById(${item.id})">✏️</button>
-                <button class="btn-sm btn-del" onclick="deleteItem(${item.id}, '${type}')">🗑️</button>
-            </div>
-        </div>
-    `).join('');
+    container.innerHTML = (json.data || []).map(item => buildAdminItemHTML(item, type)).join('');
 }
 
 async function loadUsers() {
     const res = await fetch('api.php?action=list_users');
     const json = await res.json();
-    document.getElementById('admin-users-list').innerHTML = json.data.map(u =>
-        `<div class="table-row">${u.username} (${u.role})</div>`
-    ).join('');
+
+    document.getElementById('admin-users-list').innerHTML = (json.data || []).map(u => `
+        <div class="admin-item">
+            <div class="admin-item-left">
+                <div class="admin-item-thumb"><span style="opacity:.7">👤</span></div>
+                <div class="admin-item-main">
+                    <div class="admin-item-title">${escapeHtml(u.username)}</div>
+                    <div class="admin-item-meta">
+                        <span class="admin-badge admin-badge-muted">${escapeHtml(u.role)}</span>
+            </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
 }
 
 function openModal(type, data = null) {
@@ -109,6 +163,24 @@ async function deleteItem(id, type) {
     formData.append('csrf_token', document.querySelector('[name=csrf_token]').value);
     const res = await fetch(`api.php?action=delete_${type.slice(0,-1)}`, { method: 'POST', body: formData });
     if((await res.json()).success) loadList(type);
+}
+
+async function loadTools() {
+    const wrap = document.getElementById('admin-tools-wrap');
+    if(!wrap) return;
+
+    if(toolsLoaded) return;
+
+    wrap.innerHTML = `<div class="admin-item"><div class="admin-item-left"><div class="admin-item-thumb">⏳</div><div class="admin-item-main"><div class="admin-item-title">Chargement…</div></div></div></div>`;
+
+    try{
+        const res = await fetch('debug-tools.php?partial=1', { credentials: 'same-origin' });
+        const html = await res.text();
+        wrap.innerHTML = html;
+        toolsLoaded = true;
+    }catch(e){
+        wrap.innerHTML = `<div class="admin-item"><div class="admin-item-left"><div class="admin-item-thumb">❌</div><div class="admin-item-main"><div class="admin-item-title">Erreur de chargement</div><div style="opacity:.85;font-size:.9rem;">${String(e)}</div></div></div></div>`;
+    }
 }
 
 loadDashboard();

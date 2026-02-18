@@ -10,49 +10,34 @@ requireAdmin();
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <style>
-        /* Styles Admin Spécifiques (non présents dans le CSS front) */
-        .admin-nav { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
-        .nav-item { cursor: pointer; padding: 0.5rem 1rem; color: var(--text-muted); font-weight: bold; }
-        .nav-item.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
-        .stat-card { background: var(--bg-card); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); text-align: center; }
-        .stat-num { font-size: 2.5rem; font-weight: 800; color: var(--accent); margin: 0.5rem 0; }
-
-        /* Modal & Form */
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center; }
-        .modal.active { display: flex; }
-        .modal-box { background: var(--bg-dark); padding: 2rem; border-radius: 12px; width: 700px; max-width: 95%; border: 2px solid var(--accent); max-height: 95vh; overflow-y: auto; }
-        .form-group { margin-bottom: 1.2rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--accent); font-weight:bold; }
-        .form-control { width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-light); border-radius: 6px; }
-
-        /* Override Quill pour le thème sombre */
-        .ql-toolbar { background: #e0e0e0; border-radius: 6px 6px 0 0; }
-        .ql-container { background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border-color) !important; border-radius: 0 0 6px 6px; height: 150px; }
-
-        .table-row { display: flex; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--border-color); align-items: center; }
-        .btn-sm { padding: 0.3rem 0.6rem; margin-left: 5px; cursor: pointer; border-radius: 4px; border:none; }
-        .btn-del { background: #ff4757; color: white; }
-    </style>
 </head>
 <body data-theme="dark">
 <div class="container">
-    <header>
-        <div class="logo">ADMINISTRATION</div>
-        <div class="controls">
-            <span>👤 <?php echo $_SESSION['username'] ?? 'Admin'; ?></span>
-            <a href="../index.php" target="_blank" class="theme-btn">Voir le site</a>
-            <a href="../logout.php" class="theme-btn" style="border-color:#ff4757;color:#ff4757">Déconnexion</a>
-        </div>
-    </header>
+    <header class="admin-header">
+        <div class="admin-topbar">
+            <div class="admin-title">ADMINISTRATION</div>
 
-    <nav class="admin-nav">
-        <div class="nav-item active" onclick="showSection('dashboard')">📊 Dashboard</div>
-        <div class="nav-item" onclick="showSection('sites')">🌐 Sites</div>
-        <div class="nav-item" onclick="showSection('projects')">🚀 Projets</div>
-        <div class="nav-item" onclick="showSection('users')">👥 Admins</div>
-        <a href="debug-tools.php" class="nav-item">🛠️ Outils</a>
-    </nav>
+            <div class="admin-user">
+                <div class="admin-user-name">
+                    <span class="admin-user-icon">👤</span>
+                    <span><?= htmlspecialchars($_SESSION['username'] ?? 'Admin') ?></span>
+                </div>
+
+                <div class="admin-actions">
+                    <a class="admin-link" href="../index.php">Voir le site</a>
+                    <a class="admin-link admin-link-danger" href="../logout.php">Déconnexion</a>
+                </div>
+            </div>
+        </div>
+
+        <nav class="admin-nav admin-nav-top">
+            <button class="nav-item active" type="button" onclick="showSection('dashboard')">📊 Dashboard</button>
+            <button class="nav-item" type="button" onclick="showSection('sites')">🌐 Sites</button>
+            <button class="nav-item" type="button" onclick="showSection('projects')">🧪 Projets</button>
+            <button class="nav-item" type="button" onclick="showSection('users')">👥 Admins</button>
+            <button class="nav-item" type="button" onclick="showSection('tools')">🛠 Outils</button>
+        </nav>
+    </header>
 
     <div id="sec-dashboard" class="section">
         <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-bottom: 2rem;">
@@ -75,6 +60,10 @@ requireAdmin();
     <div id="sec-users" class="section" style="display:none">
         <h3>Gestion des Admins</h3>
         <div id="admin-users-list"></div>
+    </div>
+
+    <div id="sec-tools" class="section" style="display:none">
+        <div id="admin-tools-wrap"></div>
     </div>
 </div>
 
@@ -128,3 +117,5 @@ requireAdmin();
 <script src="../assets/js/admin.js"></script>
 </body>
 </html>
+
+

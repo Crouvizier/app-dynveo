@@ -14,7 +14,9 @@
             <button class="theme-btn" data-theme="light" title="Clair">☀</button>
             <button class="theme-btn" data-theme="dark" title="Sombre">🌙</button>
             <button class="theme-btn" data-theme="cyber" title="Cyber">🔮</button>
-
+            <button class="theme-btn" data-theme="sunset" title="Sunset">🌅</button>
+            <button class="theme-btn" data-theme="nordic" title="Nordic">🪨</button>
+            <button class="theme-btn" data-theme="foret" title="Forêt">🌿</button>
             <a href="login.php" style="margin-left:1rem;color:var(--text-muted);text-decoration:none">🔒 Admin</a>
         </div>
     </header>

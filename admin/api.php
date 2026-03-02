@@ -9,7 +9,12 @@ require_once __DIR__ . '/../includes/analytics.php';
 header('Content-Type: application/json');
 
 // 1. Vérification Auth & Session
-session_start();
+session_start([
+    'cookie_lifetime' => 86400,
+    'cookie_httponly' => true,
+    'cookie_secure' => isset($_SERVER['HTTPS']),
+    'cookie_samesite' => 'Lax',
+]);
 if (!isAdmin()) {
     http_response_code(401);
     jsonResponse(false, null, 'Non autorisé');
@@ -132,29 +137,55 @@ try {
             jsonResponse(true, $stmt->fetchAll());
             break;
 
-        case 'create_user':
-            $username = trim($_POST['username']);
-            $password = $_POST['password'];
+        case 'save-admin':
+            $id = $_POST['id'] ?? null;
+            $username = htmlspecialchars($_POST['username']);
+            $email = filter_var($_POST['email'], FILTER_VALIDATE_EMAIL);
 
-            if (empty($username) || empty($password)) jsonResponse(false, null, "Champs requis");
+            if (!$email) {
+                echo json_encode(['success' => false, 'error' => 'Format d\'email invalide']);
+                exit;
+            }
 
-            // Vérif doublon
-            $exists = $pdo->prepare("SELECT id FROM users WHERE username=?");
-            $exists->execute([$username]);
-            if ($exists->fetch()) jsonResponse(false, null, "Cet utilisateur existe déjà");
+            $params = [$username, $email];
+            $sql = "UPDATE admins SET username = ?, email = ?";
 
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, 'admin')");
-            $stmt->execute([$username, $hash]);
-            jsonResponse(true);
+            // Modification optionnelle du mot de passe
+            if (!empty($_POST['password'])) {
+                $sql .= ", password = ?";
+                $params[] = password_hash($_POST['password'], PASSWORD_DEFAULT);
+            }
+
+            // Gestion de la photo de profil (réutilise votre fonction uploadImage)
+            if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+                $uploadResult = uploadImage($_FILES['photo']);
+                if ($uploadResult['success']) {
+                    $sql .= ", photo_path = ?";
+                    $params[] = $uploadResult['path'];
+                }
+            }
+
+            $sql .= " WHERE id = ?";
+            $params[] = $id;
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            echo json_encode(['success' => true]);
             break;
 
-        case 'delete_user':
-            $id = $_POST['id'];
-            if ($id == $_SESSION['user_id']) jsonResponse(false, null, "Vous ne pouvez pas vous supprimer vous-même !");
+        case 'delete-admin':
+            $id = (int)($_POST['id'] ?? 0);
 
-            $pdo->prepare("DELETE FROM users WHERE id=?")->execute([$id]);
-            jsonResponse(true);
+            // Sécurité Critique : Empêcher de supprimer le dernier admin
+            $check = $pdo->query("SELECT COUNT(*) FROM admins");
+            if ($check->fetchColumn() <= 1) {
+                echo json_encode(['success' => false, 'error' => 'Impossible de supprimer le dernier administrateur.']);
+                exit;
+            }
+
+            $stmt = $pdo->prepare("DELETE FROM admins WHERE id = ?");
+            $stmt->execute([$id]);
+            echo json_encode(['success' => true]);
             break;
 
         default:

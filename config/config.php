@@ -1,7 +1,7 @@
 <?php
 /**
  * Configuration Principale - Version BDD
- * @version 2.1.0
+ * @version 2.1.1
  */
 
 // 1. Sécurité : Empêcher l'accès direct au fichier
@@ -11,9 +11,10 @@ if (basename($_SERVER['PHP_SELF']) === basename(__FILE__)) {
 }
 
 // 2. Gestion des erreurs
-// Mettre à 0 en production pour la sécurité
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
+// Activé temporairement pour diagnostiquer la page blanche.
+// À remettre à 0 une fois que la connexion fonctionne.
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // 3. Configuration des Sessions (Blindage OWASP)
@@ -24,11 +25,12 @@ if (session_status() === PHP_SESSION_NONE) {
     // Force l'utilisation des cookies uniquement (pas d'ID dans l'URL)
     ini_set('session.use_only_cookies', 1);
 
-    // Empêche l'envoi du cookie lors de requêtes cross-site (Protection CSRF)
-    ini_set('session.cookie_samesite', 'Strict');
+    // 'Lax' au lieu de 'Strict' pour éviter les pages blanches/déconnexions lors des redirections de login
+    ini_set('session.cookie_samesite', 'Lax');
 
-    // Si HTTPS est détecté, on force le cookie sécurisé
-    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+    // Détection dynamique du HTTPS pour le cookie Secure
+    if ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
+        (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) {
         ini_set('session.cookie_secure', 1);
     }
 
@@ -36,21 +38,14 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // 4. Chargement des identifiants BDD (Secrets)
-// On cherche un fichier config.local.php qui contient les vrais mots de passe BDD
 $localConfig = __DIR__ . '/config.local.php';
 if (file_exists($localConfig)) {
     require_once $localConfig;
 }
 
-// Valeurs par défaut (au cas où config.local.php n'existe pas ou est incomplet)
-if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
-if (!defined('DB_NAME')) define('DB_NAME', 'portail_sites');
-if (!defined('DB_USER')) define('DB_USER', 'root');
-if (!defined('DB_PASS')) define('DB_PASS', '');
-
 // 5. Constantes Système
 define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/');
-define('UPLOAD_URL', 'uploads/'); // Chemin relatif pour le navigateur
+define('UPLOAD_URL', 'uploads/');
 define('MAX_FILE_SIZE', 5 * 1024 * 1024); // 5 Mo
 define('ALLOWED_MIME_TYPES', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -64,11 +59,10 @@ function getDBConnection() {
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false, // Sécurité maximale contre les injections SQL
+                PDO::ATTR_EMULATE_PREPARES => false, // Protection contre les injections SQL
             ];
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            // Log l'erreur dans un fichier serveur, mais n'affiche rien à l'utilisateur
             error_log("Erreur de connexion BDD : " . $e->getMessage());
             die("Service temporairement indisponible (Erreur BDD).");
         }
@@ -78,8 +72,7 @@ function getDBConnection() {
 
 // 7. Helpers d'Authentification
 function isLoggedIn() {
-    // On vérifie que la session est active et que l'empreinte du navigateur correspond
-    // (Protection contre le vol de session basique)
+    // Vérification de la session active ET de l'empreinte du navigateur pour éviter le vol de session
     return isset($_SESSION['admin_logged_in']) &&
         $_SESSION['admin_logged_in'] === true &&
         isset($_SESSION['fingerprint']) &&
@@ -94,7 +87,6 @@ function requireAuth() {
 }
 
 // 8. Protection CSRF (Cross-Site Request Forgery)
-// Génère un jeton unique par session si ce n'est pas déjà fait
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }

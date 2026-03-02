@@ -1,5 +1,12 @@
 // assets/js/app.js
 
+function escapeHTML(str) {
+    if (!str) return "";
+    const p = document.createElement('p');
+    p.textContent = str;
+    return p.innerHTML;
+}
+
 // Themes & Analytics
 const themeBtns = document.querySelectorAll('.theme-btn');
 const savedTheme = localStorage.getItem('site_theme') || 'dark';
@@ -26,12 +33,19 @@ async function loadContent(type) {
         const json = await res.json();
 
         if (json.success && json.data.length > 0) {
-            grid.innerHTML = json.data.map(item => `
+            grid.innerHTML = json.data.map(item => {
+                const safeName = escapeHTML(item.name);
+                const safeDesc = sanitizeHTML(item.description);
+                const safeCms = escapeHTML(item.cms);
+                const safeVersion = escapeHTML(item.version);
+                const safeStack = escapeHTML(item.tech_stack);
+
+                return `
                 <div class="site-card-wrapper">
                     <div class="site-card">
-                        <div class="card-preview" onclick="openLightbox('${item.image_path}', '${item.name.replace(/'/g, "\\'")}')">
+                        <div class="card-preview" onclick="openLightbox('${item.image_path}', '${safeName.replace(/'/g, "\\'")}')">
                             ${item.image_path
-                ? `<img src="${item.image_path}" loading="lazy" alt="${item.name}">`
+                                ? `<img src="${item.image_path}" loading="lazy" alt="${safeName}">`
                 : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem">🚀</div>`}
                             <div class="card-overlay">
                                 <div class="card-zoom-hint">🔍 Cliquer pour agrandir</div>
@@ -39,14 +53,14 @@ async function loadContent(type) {
                         </div>
                         
                         <div class="card-content">
-                            <div class="card-name">${item.name}</div>
+                            <div class="card-name">${safeName}</div>
                             
-                            <div class="card-description">${item.description || ''}</div>
+                            <div class="card-description">${safeDesc}</div>
                             
                             <div class="card-meta">
-                                ${item.cms ? `<span class="meta-badge">${item.cms}</span>` : ''}
-                                ${item.version ? `<span class="meta-badge">v${item.version}</span>` : ''}
-                                ${item.tech_stack ? `<span class="meta-badge">${item.tech_stack}</span>` : ''}
+                                ${item.cms ? `<span class="meta-badge">${safeCms}</span>` : ''}
+                                ${item.version ? `<span class="meta-badge">v${safeVersion}</span>` : ''}
+                                ${item.tech_stack ? `<span class="meta-badge">${safeStack}</span>` : ''}
                                 ${item.status ? `<span class="meta-badge status-${item.status}">${item.status}</span>` : ''}
                             </div>
 
@@ -55,10 +69,9 @@ async function loadContent(type) {
                                Visiter le site
                             </a>
                         </div>
-                        <!--<div class="card-url">${item.url}</div> -->
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         } else {
             grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted)">Aucun élément disponible.</div>';
         }
@@ -88,7 +101,6 @@ function openLightbox(src, title) {
     document.getElementById('lightbox-img').src = src;
     document.getElementById('lightbox-title').textContent = title;
 
-    // Reset scroll position
     const scrollContainer = lb.querySelector('.lightbox-scroll');
     if(scrollContainer) scrollContainer.scrollTop = 0;
 
@@ -102,3 +114,5 @@ function closeLightbox() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+

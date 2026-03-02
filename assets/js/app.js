@@ -7,6 +7,40 @@ function escapeHTML(str) {
     return p.innerHTML;
 }
 
+// Nettoie le HTML en ne gardant que les balises sûres (produites par Quill)
+function sanitizeHTML(html) {
+    if (!html) return "";
+    const allowed = ['P','BR','STRONG','EM','U','S','B','I','UL','OL','LI','A','SPAN','H1','H2','H3','H4','BLOCKQUOTE','PRE','CODE','SUB','SUP'];
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    function clean(node) {
+        const children = [...node.childNodes];
+        children.forEach(child => {
+            if (child.nodeType === Node.ELEMENT_NODE) {
+                if (!allowed.includes(child.tagName)) {
+                    // Remplace la balise interdite par son contenu texte
+                    child.replaceWith(document.createTextNode(child.textContent));
+                } else {
+                    // Nettoyer les attributs dangereux (on garde href pour <a>)
+                    [...child.attributes].forEach(attr => {
+                        if (attr.name === 'href' && child.tagName === 'A') return;
+                        if (attr.name === 'class' || attr.name === 'style') return;
+                        child.removeAttribute(attr.name);
+                    });
+                    // Sécuriser les liens
+                    if (child.tagName === 'A') {
+                        child.setAttribute('target', '_blank');
+                        child.setAttribute('rel', 'noopener noreferrer');
+                    }
+                    clean(child);
+                }
+            }
+        });
+    }
+    clean(doc.body);
+    return doc.body.innerHTML;
+}
+
 // Themes & Analytics
 const themeBtns = document.querySelectorAll('.theme-btn');
 const savedTheme = localStorage.getItem('site_theme') || 'dark';

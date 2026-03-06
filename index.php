@@ -1,13 +1,13 @@
 <?php require 'templates/header.php'; ?>
 
 <div class="tabs">
-    <div class="tab" data-tab="sites" onclick="switchTab('sites')">Sites Web</div>
-    <div class="tab active" data-tab="projects" onclick="switchTab('projects')">Outils</div>
+    <div class="tab active" data-target="projects" onclick="switchTab('projects')">Outils</div>
+    <div class="tab" data-target="sites" onclick="switchTab('sites')">Sites Web</div>
 </div>
 
 <main>
-    <div class="grid" id="sites-grid" style="display: none;"></div>
-    <div class="grid" id="projects-grid"></div>
+    <div id="projects-grid" class="grid"></div>
+    <div id="sites-grid" class="grid" style="display:none"></div>
 </main>
 
 <div id="lightbox" class="lightbox">

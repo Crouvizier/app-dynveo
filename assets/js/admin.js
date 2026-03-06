@@ -1,5 +1,5 @@
 // assets/js/admin.js
-let currentType = 'sites';
+let currentType = 'projects';
 let currentItems = [];
 let toolsLoaded = false;
 var quill;
